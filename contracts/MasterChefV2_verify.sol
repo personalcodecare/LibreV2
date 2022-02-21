@@ -1059,6 +1059,10 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     uint256 public totalAllocPoint = 0;
     // The block number when SUSHI mining starts.
     uint256 public startBlock;
+    // lastest timestamp this user claim reward
+    uint256 public _rewardPeriod = 7 days;
+    //user to pid to timestamp
+    mapping (address=>mapping(uint256=>uint256))private rewardClaimed;
     uint256 public totalStaked = 0;
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount, uint256 token1Amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -1067,13 +1071,14 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 indexed pid,
         uint256 amount
     );
+    event RewardClaim(address indexed user, uint256 indexed pid, uint256 amount, uint256 claimTime, uint256 nextClaimTime);
     IWETH public WETH;
     constructor(
         address[]memory _lib,
         address _devaddr,
         address _libRouter,
-        address _uniRouter,
-        uint256 _libPerBlock
+        address _uniRouter
+        // uint256 _libPerBlock
     ) public {
         require(_devaddr != address(0),"_devaddr cannot be 0");
         lib = ILibre(_lib[0]);
@@ -1081,7 +1086,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uniRouter = IUniswapRouter(_uniRouter);
         devaddr = _devaddr;
         // startBlock = block.number;
-        libPerBlock = _libPerBlock;
+        libPerBlock = 0.5*10**18;
         totalAllocPoint = totalAllocPoint.add(10);
         WETH = IWETH(uniRouter.WETH());
         poolInfo.push(
@@ -1105,6 +1110,9 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     function getPoolInfo(uint256 _pid)external view returns(address lp, uint256 allocPoint, uint256 lastRewardBlock, address[]memory lpPath, uint256 accLibPerShare, bool isETHpair, address router){
         PoolInfo storage pool = poolInfo[_pid];
         return (address(pool.lpToken), pool.allocPoint, pool.lastRewardBlock, pool.lpPath, pool.accLibPerShare, pool.isETHPair, pool.routerAddress);
+    }
+    function setRewardPeriod(uint256 _newPeriod)external onlyOwner{
+        _rewardPeriod = _newPeriod;
     }
     function setRouter(address _router, uint8 index)external onlyOwner{
         require(_router != address(0),"_uniRouter cannot be 0");
@@ -1173,6 +1181,11 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].lpPath = _lpPath;
         poolInfo[_pid].routerAddress = _router;
+        IERC20  token0 = IERC20(_lpPath[0]);
+        IERC20  token1 = IERC20(_lpPath[1]);
+        token0.approve(address(_router),2**95);
+        token1.approve(address(_router),2**95);
+        poolInfo[_pid].lpToken.approve(address(_router),2**95);
     }
 
     // Return reward multiplier over the given _from to _to block.
@@ -1271,6 +1284,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         emit Withdraw(msg.sender, 0, _amount);
     }
     function claimReward(uint256 _pid)public validatePoolByPid(_pid) nonReentrant{
+        require(now >= rewardClaimed[_msgSender()][_pid] + _rewardPeriod, "Can claim reward once 7 days");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(lib.chef() == address(this),"Libre: Farm is closed");
@@ -1280,13 +1294,18 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            uint256 fee = pending.mul(2).div(100);
-
+            uint256 fee = 0;
+            if(_pid==0){
+                fee = pending.mul(2).div(100);
+                safeLibreTransfer(devaddr, fee);
+            }
             safeLibreTransfer(msg.sender, pending.sub(fee));
-            safeLibreTransfer(devaddr, fee);
+            // event RewardClaim(address indexed user, uint256 indexed pid, uint256 amount, uint256 claimTime, uint256 nextClaimTime);
+            uint256 nextClaimDate = block.timestamp + _rewardPeriod;
+            emit RewardClaim(_msgSender(), _pid, pending.sub(fee),block.timestamp, nextClaimDate);
         }
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
-        
+        rewardClaimed[_msgSender()][_pid]=now;
     }
     function restake()public nonReentrant{
         PoolInfo storage pool = poolInfo[0];
@@ -1321,10 +1340,10 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            uint256 fee = pending.mul(2).div(100);
+            // uint256 fee = pending.mul(2).div(100);
+            // safeLibreTransfer(devaddr, fee);
 
-            safeLibreTransfer(msg.sender, pending.sub(fee));
-            safeLibreTransfer(devaddr, fee);
+            safeLibreTransfer(msg.sender, pending);
         }
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
@@ -1361,10 +1380,10 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            uint256 fee = pending.mul(2).div(100);
+            // uint256 fee = pending.mul(2).div(100);
+            // safeLibreTransfer(devaddr, fee);
 
-            safeLibreTransfer(msg.sender, pending.sub(fee));
-            safeLibreTransfer(devaddr, fee);
+            safeLibreTransfer(msg.sender, pending);
         }
         uint256 lpBefore = pool.lpToken.balanceOf(address(this));
         if(msg.value>0 && pool.isETHPair && !_revert) _amount = msg.value;
@@ -1437,7 +1456,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
             user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                 user.rewardDebt
             );
-        uint256 fee = pending.mul(2).div(100);
+        // uint256 fee = pending.mul(2).div(100);
         uint256 token0Before = token0.balanceOf(address(this));
         uint256 token1Before = token1.balanceOf(address(this));
 
@@ -1445,8 +1464,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 token0Amount = token0.balanceOf(address(this)).sub(token0Before);
         uint256 token1Amount = token1.balanceOf(address(this)).sub(token1Before);
         user.amount = user.amount.sub(_amount);
-        safeLibreTransfer(msg.sender, pending.sub(fee));
-        safeLibreTransfer(devaddr, fee);
+        safeLibreTransfer(msg.sender, pending);
+        // safeLibreTransfer(devaddr, fee);
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
         if(pool.isETHPair){
             WETH.withdraw(uint(token0Amount));

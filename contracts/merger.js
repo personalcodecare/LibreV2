@@ -1,10 +1,10 @@
-const { merge } = require('sol-merger');
-fs = require('fs');
+const {merge} = require("sol-merger");
+fs = require("fs");
+
 async function start(){
-    const mergedCode = await merge("./MasterChefV2.sol");
-    // console.log(mergedCode);
-    fs.writeFile("MasterChefV2_verify.sol",mergedCode, (err)=>{
+    const code = await merge('UniswapV2Pair.sol');
+    fs.writeFile("UniswapPair.sol",code,(err)=>{
         if(err)console.log(err);
-    });
+    })
 }
 start();
