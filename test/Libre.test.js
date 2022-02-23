@@ -120,20 +120,17 @@ describe('Test Masterchef', function () {
 
   it('Deposit token test', async ()=>{
     var depositAmount = 1000000;
-    await chefV2.connect(user1).deposit(1,depositAmount, 0, true);
-    depositedAmount = parseInt((await chefV2.userInfo(1,user1.address))[0]);
-    expect(depositedAmount).to.above(0);
 
     initBal = await TestToken.balanceOf(user1.address);
-    await chefV2.connect(user1).deposit(1,depositAmount, 0, false);
+    await chefV2.connect(user1).deposit(1,depositAmount, 0);
     expect(parseInt(await TestToken.balanceOf(user1.address))).to.below(parseInt(initBal));
-    expect(parseInt((await chefV2.userInfo(1,user1.address))[0])).to.above(depositedAmount);
+    expect(parseInt((await chefV2.userInfo(1,user1.address))[0])).to.above(0);
     for(var i=0;i<5;i++){//generate 5 blocks
       await LibToken.approve(chefV2.address, BigInt(10**25));
     }
     await chefV2.massUpdatePools();
-    expect(parseInt((await chefV2.userInfo(1,user1.address))[1])).to.above(0);
-  });
+    expect(parseInt(await chefV2.pendingLib(1,user1.address))).to.above(0);
+});
   it('Deposit LP test', async ()=>{
     LPToken = await LibFactory.getPair(LibToken.address, TestToken.address);
     LP = new ethers.Contract(LPToken, TokenABI,ethers.provider);
@@ -148,19 +145,15 @@ describe('Test Masterchef', function () {
   it('Deposit ETH test', async ()=>{
     var depositAmount = 1000000;
     initBal = await LibToken.balanceOf(user1.address);
-    await chefV2.connect(user1).deposit(2,depositAmount, 0, true);
-    expect(parseInt(await LibToken.balanceOf(user1.address))).to.below(parseInt(initBal));
-
-    depositedAmount = parseInt((await chefV2.userInfo(2,user1.address))[0]);
-    expect(depositedAmount).to.above(0);
-    await chefV2.connect(user1).deposit(2,depositAmount, 0, false,{value:10000});
-    expect(parseInt((await chefV2.userInfo(2,user1.address))[0])).to.above(depositedAmount);
+    await chefV2.connect(user1).deposit(2,depositAmount, 0,{value:10000});
+    expect(parseInt((await chefV2.userInfo(2,user1.address))[0])).to.above(0);
 
     for(var i=0;i<5;i++){//generate 5 blocks
       await LibToken.approve(chefV2.address, BigInt(10**25));
     }
     await chefV2.massUpdatePools();
-    expect(parseInt((await chefV2.userInfo(2,user1.address))[1])).to.above(0);
+    expect(parseInt(await chefV2.pendingLib(2,user1.address))).to.above(0);
+
   });
   it('ClaimReward test', async ()=>{
     var rewardPeriod = 5;
@@ -169,7 +162,7 @@ describe('Test Masterchef', function () {
     expect(parseInt(await chefV2._rewardPeriod())).to.equal(rewardPeriod);
     var stakeAmount = BigInt(10**4);
     await chefV2.connect(user1).stake(stakeAmount);
-    await chefV2.connect(user1).deposit(1,100000, 0, true);
+    await chefV2.connect(user1).deposit(1,100000, 0);
 
     expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
     for(var i=0;i<5;i++){//generate 5 blocks
@@ -184,13 +177,10 @@ describe('Test Masterchef', function () {
     expect(parseInt(claimEvent[1])).to.above(0);
     expect(parseInt(claimEvent[4])).to.equal(parseInt(claimEvent[3])+rewardPeriod);
     expect(parseInt(await LibToken.balanceOf(user1.address))).to.above(currBal);
-    try{//expect revert with "Can claim reward once 7 days"
-      await chefV2.connect(user1).claimReward(1)
-    }catch(err){
-      // console.log(err)
-    }
+    await expect(chefV2.connect(user1).claimReward(1)).to.revertedWith("Can claim reward once 7 days");
+
     currBal = (parseInt(await LibToken.balanceOf(user1.address)));
-    for(var i=0;i<rewardPeriod;i++){ //Pass 5 sec
+    for(var i=1;i<=rewardPeriod;i++){ //Pass 5 sec
       await delay(1000);
       await LibToken.approve(chefV2.address, BigInt(10**25));
       console.log(`Wait ${i} sec...`);
@@ -226,7 +216,7 @@ describe('Test Masterchef', function () {
       0,0, owner.address, Date.now());
     await chefV2.set(1, 30, [TestToken.address, LibToken.address], LibRouter.address,true);
     expect((await chefV2.poolInfo(1))[3]).to.equal(LibRouter.address);
-    await chefV2.connect(user1).deposit(1,100000, 0, true);
+    await chefV2.connect(user1).deposit(1,100000, 0);
     expect((await chefV2.userInfo(1,user1.address))[0]).to.above(0);
   });
 });

@@ -1369,7 +1369,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     //     user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
     //     emit Deposit(msg.sender, _pid, _amount0, lpAmount);
     // }
-    function deposit(uint256 _pid, uint256 _amount, uint8 _slippage, bool _revert) public validatePoolByPid(_pid) nonReentrant payable{
+    function deposit(uint256 _pid, uint256 _amount, uint8 _slippage) public validatePoolByPid(_pid) nonReentrant payable{
         require(_pid>0,"pool 0 is for staking");
         require(_slippage<=20,"slippage range not greater than 2%");
         PoolInfo storage pool = poolInfo[_pid];
@@ -1385,9 +1385,9 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
 
             safeLibreTransfer(msg.sender, pending);
         }
+        bool _revert = false;//incase requirement change again
         uint256 lpBefore = pool.lpToken.balanceOf(address(this));
         if(msg.value>0 && pool.isETHPair && !_revert) _amount = msg.value;
-
         address[] memory lpPath = new address[](2);
         lpPath[0] = _revert ?pool.lpPath[1]:pool.lpPath[0];
         lpPath[1] = _revert ?pool.lpPath[0]:pool.lpPath[1];
