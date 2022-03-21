@@ -1010,7 +1010,10 @@ interface IUniswapFactory {
     function allPairs(uint) external view returns (address pair);
     function allPairsLength() external view returns (uint);
 }
-
+interface ILibreNFT{
+    function ownerOf(uint256 id)external view returns(address owner);
+    function getBestRarity(address account)external view returns(uint8 rareity);
+}
 contract MasterChefV2 is Ownable,ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -1040,6 +1043,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 accLibPerShare; // Accumulated LIBs per share, times 1e12. See below.
         bool isETHPair; // non-Libre LP will be charged 5% fee on withdraw
     }
+    bool public NFTBoostSwitch;
+    uint8[] public NTFrarity;
     // The LIB TOKEN!
     ILibre public lib;
     // Dev address.
@@ -1049,6 +1054,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     // Lib tokens burn per block.
     IUniswapRouter public uniRouter;
     IUniswapRouter public libreRouter;
+    //booster NFT address
+    ILibreNFT public boosterNFT;
     // Info of each pool.
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
@@ -1078,15 +1085,15 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         address _devaddr,
         address _libRouter,
         address _uniRouter
-        // uint256 _libPerBlock
     ) public {
         require(_devaddr != address(0),"_devaddr cannot be 0");
         lib = ILibre(_lib[0]);
         libreRouter = IUniswapRouter(_libRouter);
         uniRouter = IUniswapRouter(_uniRouter);
         devaddr = _devaddr;
-        // startBlock = block.number;
-        libPerBlock = 0.5*10**18;
+        NTFrarity = [0, 20, 40, 60, 80, 100, 120];
+        NFTBoostSwitch = false;
+        libPerBlock = 5e17;
         totalAllocPoint = totalAllocPoint.add(10);
         WETH = IWETH(uniRouter.WETH());
         poolInfo.push(
@@ -1100,6 +1107,15 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 isETHPair: false
             })
         );
+    }
+    function NFTBoostOn(bool _switch)external onlyOwner{
+        NFTBoostSwitch = _switch;
+    }
+    function setBoosterNFT(address _NFT)external onlyOwner{
+        boosterNFT = ILibreNFT(_NFT);
+    }
+    function setBoosterRarity(uint8[]memory arr)external onlyOwner{
+        NTFrarity = arr;
     }
     function setLibrePerBlock(uint256 _libPerBlock) external onlyOwner{
         libPerBlock = _libPerBlock;
@@ -1340,9 +1356,6 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            // uint256 fee = pending.mul(2).div(100);
-            // safeLibreTransfer(devaddr, fee);
-
             safeLibreTransfer(msg.sender, pending);
         }
         if (_amount > 0) {
@@ -1351,24 +1364,6 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         }
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
     }
-    // function depositBoth(uint256 _pid, uint _amount0, uint _amount1) public validatePoolByPid(_pid) nonReentrant payable{
-    //     require(_pid>0,"pool 0 is for staking");
-    //     PoolInfo storage pool = poolInfo[_pid];
-    //     UserInfo storage user = userInfo[_pid][msg.sender];
-    //     uint256 lpBefore = pool.lpToken.balanceOf(address(this));
-    //     if(pool.lpPath[0]!= address(WETH))IERC20(pool.lpPath[0]).transferFrom(msg.sender, address(this), _amount0);
-    //     if(pool.lpPath[1]!= address(WETH))IERC20(pool.lpPath[1]).transferFrom(msg.sender, address(this), _amount1);
-    //     uint256 token0init = pool.isETHPair ?address(this).balance :IERC20(pool.lpPath[0]).balanceOf(address(this));
-    //     uint256 token1Before = pool.isETHPair ?address(this).balance :IERC20(pool.lpPath[1]).balanceOf(address(this));
-    //     _addLibLiquidity(msg.sender, pool.isETHPair, msg.value, IERC20(pool.lpPath[0]), IERC20(pool.lpPath[1]), token0init, token1Before, _amount0, _amount1);
-    //     uint256 lpAmount = pool.lpToken.balanceOf(address(this)).sub(lpBefore);
-    //     uint256 fee = lpAmount.mul(2).div(100);
-    //     lpAmount = lpAmount.sub(fee);
-    //     pool.lpToken.transfer(devaddr,fee);
-    //     user.amount = user.amount.add(lpAmount);
-    //     user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
-    //     emit Deposit(msg.sender, _pid, _amount0, lpAmount);
-    // }
     function deposit(uint256 _pid, uint256 _amount, uint8 _slippage) public validatePoolByPid(_pid) nonReentrant payable{
         require(_pid>0,"pool 0 is for staking");
         require(_slippage<=20,"slippage range not greater than 2%");
@@ -1481,6 +1476,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     
     // Safe sushi transfer function, just in case if rounding error causes pool to not have enough Libres.
     function safeLibreTransfer(address _to, uint256 _amount) internal {
+        if(NFTBoostSwitch)mintBoostedLibre(_to, _amount);
+
         uint256 libBal = lib.balanceOf(address(this));
         if (_amount > libBal) {
             lib.transfer(_to, libBal);
@@ -1513,4 +1510,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
     }
+    function mintBoostedLibre(address _account, uint256 _amount)internal{
+        uint8 rarity = boosterNFT.getBestRarity(_account);//1<2<3<4<5<6, 0=not own
+        lib.mint(_account,_amount*NTFrarity[rarity]/100);
+    } 
 }
