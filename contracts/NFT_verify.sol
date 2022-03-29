@@ -1034,7 +1034,6 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
 
     // Array with all token ids, used for enumeration
     uint256[] private _allTokens;
-
     // Mapping from token id to position in the allTokens array
     mapping(uint256 => uint256) private _allTokensIndex;
 
@@ -1175,36 +1174,127 @@ abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
         _allTokens.pop();
     }
 }
+interface IERC20 {
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() external view returns (uint256);
 
+    /**
+     * @dev Returns the token decimals.
+     */
+    function decimals() external view returns (uint8);
+
+    /**
+     * @dev Returns the token symbol.
+     */
+    function symbol() external view returns (string memory);
+
+    /**
+     * @dev Returns the token name.
+     */
+    function name() external view returns (string memory);
+
+    /**
+     * @dev Returns the bep token owner.
+     */
+    function getOwner() external view returns (address);
+
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `recipient`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     *
+     * This value changes when {approve} or {transferFrom} are called.
+     */
+    function allowance(address _owner, address spender) external view returns (uint256);
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Moves `amount` tokens from `sender` to `recipient` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
 // import './abstracts/Ownable.sol';
 // import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 contract NFT is ERC721Enumerable{
     using Address for address;
     using Strings for uint256;
-    uint32 constant public MAXIMUM_SUPPLY = 60;
-    uint32[7] public rarity_left;
+    IERC20 public Lib;
+    uint8 public LibMintBonus = 2;
+    uint32 private LIBRE_HOLDER_RESERVED = 20;
+    uint32 constant public MAXIMUM_SUPPLY = 250;
+    uint256[] public unmintedTokens; // index 0~2499, value 1~2500
     // Pinata gateway URL linke to token Metadata json ex.https://gateway.pinata.cloud/ipfs/
     string private _baseURI;
     // IPFS cid to all collection
     string private _cid;
     mapping(uint256=>uint8)private idToRarity;
     mapping(address=>uint8)private bestRarityOwned;
-    uint256 private _price;
-    constructor (string memory _name, string memory _symbol) 
-    public ERC721(_name, _symbol)
-    {
-        _price = 1*10**18;
-        rarity_left[6]=1;
-        rarity_left[5]=4;
-        rarity_left[4]=8;
-        rarity_left[3]=12;
-        rarity_left[2]=15;
-        rarity_left[1]=20;
+    uint256 public ethprice = 1*10**18;
+    uint256 public libprice = 1*10**18;
+    constructor (string memory _name, string memory _symbol, address _lib) 
+    public ERC721(_name, _symbol){
+        unmintedTokens = new uint256[](MAXIMUM_SUPPLY);
+        Lib = IERC20(_lib);
     }
     function getBestRarity(address _owner)external view returns(uint8 bestRarity){
         uint256 balance = balanceOf(_owner);
         uint8 bestRarity = 0;
-        for(uint256 i = 0;i<balance;i++){
+        for(uint i = 0;i<balance;i++){
             uint256 id = tokenOfOwnerByIndex(_owner, i);
             if(bestRarity < idToRarity[id])bestRarity = idToRarity[id];
         }
@@ -1216,50 +1306,78 @@ contract NFT is ERC721Enumerable{
     function cid()public view returns(string memory){
         return _cid;
     }
+    function initRarity(uint256 _start, uint256 _end, uint8[]memory _rarityTable)external onlyOwner{
+        for(uint i=0;i<=_end - _start;i++){
+            idToRarity[i+_start] = _rarityTable[i];
+            unmintedTokens[i+_start-1] = i+_start;
+        }
+    }    
+    function setPrice(uint256 eth, uint256 lib)external onlyOwner{
+        ethprice = eth;
+        libprice = lib;
+    }
+    function setLibre(address _lib)external onlyOwner{
+        Lib = IERC20(_lib);
+    }
     function setURI(string memory URI_)public onlyOwner{
         _baseURI = URI_;
     }
     function setCID(string memory cid_)public onlyOwner{
         _cid = cid_;
     }
-    function setPrice(uint256 price_)public onlyOwner{
-        _price = price_;
-    }
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
 
         return bytes(_baseURI).length > 0 ? string(abi.encodePacked(_baseURI, _cid, tokenId.toString(),".json")) : "";
     }
-    function mint()public payable{
-        require(msg.value == _price, "Price not match");
-        uint256 id = totalSupply() + 1;
-        require(id <= MAXIMUM_SUPPLY,"All NFT has mint");
-        uint256 rand = uint256(
-            keccak256(
-                abi.encodePacked(
-                    msg.sender,
-                    id,
-                    blockhash(block.number),
-                    block.timestamp,
-                    block.difficulty
-                )
-            )
-        );
-        uint256 rarity = (rand % 6) + 1;//1~6
-        while(rarity_left[rarity]==0){
-            rarity = (rarity + 1) % 6; //1->2, 2->3, 3->4, 4->5, 5->6, 6->1
-            if(rarity == 0) rarity=6;
-        }
-        rarity_left[rarity]--;
-        idToRarity[id] = uint8(rarity);
-        _mint(_msgSender(), id);
+
+    function mintWithEth()public payable{
+        require(msg.value == ethprice, "Price not match");
+        require(unmintedTokens.length > 0,"All NFT has mint");
+        _mintRandom();
     }
 
-    function ownerMint()public onlyOwner{
-        uint256 id = totalSupply() + 1;
-        _mint(_msgSender(), id);
+    function mintWithLib()public{
+        require(Lib.transferFrom(msg.sender, address(this), libprice), "Insufficent Libre balance or allowance");
+        for(uint i=0;i<LibMintBonus;i++){
+            if(unmintedTokens.length > 0) _mintRandom();
+        }
+    }
+    function ownerReserve(uint32 number)public onlyOwner{
+        require(LIBRE_HOLDER_RESERVED>0,"Owner is already reserved");
+        for(uint i=0;i<number;i++){
+            _mintRandom();
+        }
+        LIBRE_HOLDER_RESERVED -= number;
+    }
+    function _mintRandom()private{
+            uint256 rand = uint256(
+                keccak256(
+                    abi.encodePacked(
+                        msg.sender,
+                        address(this),
+                        blockhash(block.number),
+                        block.timestamp,
+                        block.difficulty,
+                        totalSupply(),
+                        unmintedTokens.length
+                    )
+                )
+            );
+            uint256 index = rand % unmintedTokens.length;
+            _mint(_msgSender(), unmintedTokens[index]);
+            remove(index);
     }
     function getRarity(uint256 id)public view returns(uint8){
         return idToRarity[id];
+    }
+    function remove(uint index)public{
+        if (index >= unmintedTokens.length) return;
+
+        for (uint i = index; i<unmintedTokens.length-1; i++){
+            unmintedTokens[i] = unmintedTokens[i+1];
+        }
+        delete unmintedTokens[unmintedTokens.length-1];
+        unmintedTokens.pop();
     }
 }

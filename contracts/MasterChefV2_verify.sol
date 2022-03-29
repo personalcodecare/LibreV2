@@ -1273,8 +1273,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 );
             uint256 fee = pending.mul(2).div(100);
 
-            safeLibreTransfer(msg.sender, pending.sub(fee));
-            safeLibreTransfer(devaddr, fee);
+            safeLibreTransfer(msg.sender, pending.sub(fee), false);
+            safeLibreTransfer(devaddr, fee, false);
         }
         user.amount = user.amount.add(_amount);
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
@@ -1293,10 +1293,10 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 fee = pending.mul(2).div(100);
 
         user.amount = user.amount.sub(_amount);
-        safeLibreTransfer(msg.sender, pending.sub(fee));
-        safeLibreTransfer(devaddr, fee);
+        safeLibreTransfer(msg.sender, pending.sub(fee), false);
+        safeLibreTransfer(devaddr, fee, false);
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
-        safeLibreTransfer(address(msg.sender),_amount);
+        // safeLibreTransfer(address(msg.sender),_amount, false);
         emit Withdraw(msg.sender, 0, _amount);
     }
     function claimReward(uint256 _pid)public validatePoolByPid(_pid) nonReentrant{
@@ -1313,9 +1313,9 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
             uint256 fee = 0;
             if(_pid==0){
                 fee = pending.mul(2).div(100);
-                safeLibreTransfer(devaddr, fee);
+                safeLibreTransfer(devaddr, fee, false);
             }
-            safeLibreTransfer(msg.sender, pending.sub(fee));
+            safeLibreTransfer(msg.sender, pending.sub(fee),false);
             // event RewardClaim(address indexed user, uint256 indexed pid, uint256 amount, uint256 claimTime, uint256 nextClaimTime);
             uint256 nextClaimDate = block.timestamp + _rewardPeriod;
             emit RewardClaim(_msgSender(), _pid, pending.sub(fee),block.timestamp, nextClaimDate);
@@ -1337,7 +1337,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
             uint256 fee = pending.mul(2).div(100);
 
             // safeLibreTransfer(msg.sender, pending.sub(fee));
-            safeLibreTransfer(devaddr, fee);
+            safeLibreTransfer(devaddr, fee, false);
             uint256 amount = pending.sub(fee);
             user.amount = user.amount.add(amount);        
             totalStaked = totalStaked.add(amount);
@@ -1356,7 +1356,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                     user.rewardDebt
                 );
-            safeLibreTransfer(msg.sender, pending);
+            safeLibreTransfer(msg.sender, pending, false);
         }
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
@@ -1378,7 +1378,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
             // uint256 fee = pending.mul(2).div(100);
             // safeLibreTransfer(devaddr, fee);
 
-            safeLibreTransfer(msg.sender, pending);
+            safeLibreTransfer(msg.sender, pending, false);
         }
         bool _revert = false;//incase requirement change again
         uint256 lpBefore = pool.lpToken.balanceOf(address(this));
@@ -1459,7 +1459,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 token0Amount = token0.balanceOf(address(this)).sub(token0Before);
         uint256 token1Amount = token1.balanceOf(address(this)).sub(token1Before);
         user.amount = user.amount.sub(_amount);
-        safeLibreTransfer(msg.sender, pending);
+        safeLibreTransfer(msg.sender, pending, false);
         // safeLibreTransfer(devaddr, fee);
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
         if(pool.isETHPair){
@@ -1475,8 +1475,8 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     receive() external payable {}
     
     // Safe sushi transfer function, just in case if rounding error causes pool to not have enough Libres.
-    function safeLibreTransfer(address _to, uint256 _amount) internal {
-        if(NFTBoostSwitch)mintBoostedLibre(_to, _amount);
+    function safeLibreTransfer(address _to, uint256 _amount, bool _isEmergency) internal {
+        if(NFTBoostSwitch && _to != devaddr && !_isEmergency)mintBoostedLibre(_to, _amount);
 
         uint256 libBal = lib.balanceOf(address(this));
         if (_amount > libBal) {
@@ -1493,7 +1493,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         if(_pid>0) pool.lpToken.safeTransfer(address(msg.sender), user.amount);
         else{
-            safeLibreTransfer(address(msg.sender),user.amount);
+            safeLibreTransfer(address(msg.sender),user.amount, true);
             totalStaked = totalStaked.sub(user.amount);
         }
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
@@ -1509,6 +1509,9 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     function dev(address _devaddr) public {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
+    }
+    function getNextClaimTime(address account, uint256 _pid)external view returns(uint256 timestamp){
+        return rewardClaimed[_msgSender()][_pid];
     }
     function mintBoostedLibre(address _account, uint256 _amount)internal{
         uint8 rarity = boosterNFT.getBestRarity(_account);//1<2<3<4<5<6, 0=not own
