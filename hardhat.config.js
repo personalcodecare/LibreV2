@@ -24,7 +24,13 @@ module.exports = {
       blockGasLimit: 32_000_000,
       gasPrice: 2000,
       initialBaseFeePerGas: 1
-    }    
+    } ,
+    BSCTest:{
+        url: `https://data-seed-prebsc-1-s1.binance.org:8545/`,
+        chainId: 97,
+        gase: "auto",
+        accounts: [`45f93e7a6cf774228519708aa97529a9ce2a663e26e67f183fe49bb9c90d468d`]
+    } 
   },
   mocha:{
     timeout: 900000000,
@@ -33,7 +39,7 @@ module.exports = {
   settings: {
     optimizer: {
       enabled: true,
-      runs:20
+      runs:200
     },
     evmVersion: "byzantium"
   }

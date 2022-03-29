@@ -7,6 +7,7 @@ chai.use(require('chai-bignumber')());
 use(solidity);
 
 var token;
+var lib;
 // Start test block
 
 async function delay(time) {
@@ -15,44 +16,58 @@ async function delay(time) {
 describe('Test NFT', function () {
   before(async function () {
     this.NFT = await ethers.getContractFactory("NFT");
-  
+    this.Libre = await ethers.getContractFactory("LibToken");
   });
 
   beforeEach(async function () {
     [owner, user1, user2, user3, user4, user5] = await ethers.getSigners();
-    token = await this.NFT.deploy("Test","TEST");
+    lib = await this.Libre.deploy();
+    await lib.deployed();
+    token = await this.NFT.deploy("Test","TEST", lib.address);
     await token.deployed();
-    
-  });
-
-  it('Token mint test',async ()=>{
-    await token.mint({value:BigInt(1*10**18)});
-    expect(await token.getRarity(1)).to.equal(await token.getBestRarity(owner.address));
-    expect(await token.ownerOf(1)).to.equal(owner.address);
-  })
-  it('Rarity test',async function(){
-    var rarityCount = [0,0,0,0,0,0];
-    rank1_supply = await token.rarity_left(1);
-    rank2_supply = await token.rarity_left(2);
-    rank3_supply = await token.rarity_left(3);
-    rank4_supply = await token.rarity_left(4);
-    rank5_supply = await token.rarity_left(5);
-    rank6_supply = await token.rarity_left(6);
-    for(var i = 1;i <=60;i ++){
-      await token.connect(user1).mint({value:BigInt(1*10**18)});
-      var rarity = await token.getRarity(i);
-      rarityCount[rarity-1]++;
+    for(var i=0;i<25;i++){
+      await token.initRarity(10*i + 1,10*i+10,[1,2,2,6,3,1,5,4,3,1]);
     }
-    expect(rarityCount[0]).to.equal(rank1_supply);
-    expect(rarityCount[1]).to.equal(rank2_supply);
-    expect(rarityCount[2]).to.equal(rank3_supply);
-    expect(rarityCount[3]).to.equal(rank4_supply);
-    expect(rarityCount[4]).to.equal(rank5_supply);
-    expect(rarityCount[5]).to.equal(rank6_supply);
-    expect(await token.getBestRarity(user1.address)).to.equal(6);
-    expect(await token.getBestRarity(owner.address)).to.equal(0);
+
+    await token.setURI("https://ipfs.io/ipfs/");
+    await token.setCID("QmPhribQrECVnJaaK9z5nnMJB4AQHFrXLFUyhHpwyD9fUN/");
+  
   });
 
+  it('Owner reserve mint test',async ()=>{
+    await token.ownerReserve(10);
+    bal = await token.balanceOf(owner.address);
+    var arr=[];
+    for(var i=0;i<bal;i++){
+      arr.push(await token.tokenOfOwnerByIndex(owner.address, i));
+    }
+    // console.log(arr);
+    expect(arr.length).to.equal(10);
+  })
+  it('Mint test',async function(){
+    await token.connect(user1).mintWithEth({value:BigInt(1*10**18)});
+    expect(await token.balanceOf(user1.address)).to.equal(1);
+    await lib.transfer(user2.address, BigInt(10*10**18));
+    await lib.connect(user2).approve(token.address, BigInt(10*10**18));
+    await token.connect(user2).mintWithLib();
+    expect(await token.balanceOf(user2.address)).to.equal(2);
+  });
+  it('URI test',async function(){
+    await token.connect(user1).mintWithEth({value:BigInt(1*10**18)});
+    expect(await token.balanceOf(user1.address)).to.equal(1);
+    id = await token.tokenOfOwnerByIndex(user1.address, 0);
+    console.log(id)
+    console.log(await token.tokenURI(id));
+  });
+  it('Rarity test',async function(){
+    await token.connect(user1).mintWithEth({value:BigInt(1*10**18)});
+    id = await token.tokenOfOwnerByIndex(user1.address, 0);
+    rarity = await token.getRarity(id)
+    expect(rarity).to.above(0)
+    expect(rarity).to.below(7)
+    expect(await token.unmintedTokens(id-2)).to.equal(parseInt(id)-1);
+    expect(await token.unmintedTokens(id-1)).to.equal(parseInt(id)+1);
+  });
  
 });
 

@@ -38,7 +38,7 @@ describe('Test Masterchef', function () {
   });
 
   beforeEach(async function () {
-    [owner, user1, user2] = await ethers.getSigners();
+    [owner, user1, user2, user3, user4] = await ethers.getSigners();
     UniFactory = await this.UniswapFactory.deploy(owner.address);
     await UniFactory.deployed();
     LibFactory = await this.UniswapFactory.deploy(owner.address);
@@ -89,9 +89,17 @@ describe('Test Masterchef', function () {
     LibToken.transfer(user2.address, BigInt(10**15));
     TestToken.transfer(user2.address, BigInt(10**15));
     WETH.transfer(user1.address, BigInt(10**15));
-    WETH.transfer(user2.address, BigInt(10**15));
-    BoosterNFT = await this.NFT.deploy("Test","TEST");
+    WETH.transfer(user2.address, BigInt(10**15));    
+    WETH.transfer(user3.address, BigInt(10**15));
+    WETH.transfer(user4.address, BigInt(10**15));
+
+    BoosterNFT = await this.NFT.deploy("Test","TEST", LibToken.address);
     await BoosterNFT.deployed();
+    for(var i=0;i<25;i++){
+      await BoosterNFT.initRarity(10*i + 1,10*i+10,[1,2,2,6,3,1,5,4,3,1]);
+    }
+    // await token.setURI("https://ipfs.io/ipfs/");
+    // await token.setCID("QmPhribQrECVnJaaK9z5nnMJB4AQHFrXLFUyhHpwyD9fUN/");
 
   });
 
@@ -233,23 +241,29 @@ describe('Test Masterchef', function () {
   it('NFT boost test', async ()=>{
     await chefV2.setBoosterNFT(BoosterNFT.address);
     await chefV2.NFTBoostOn(true);
-    await BoosterNFT.connect(user1).mint({value:BigInt(10**18)});
-    console.log(await BoosterNFT.getBestRarity(user1.address));
-    var stakeAmount = BigInt(10**4);
-    await chefV2.connect(user1).stake(stakeAmount);
-    await chefV2.connect(user2).stake(stakeAmount);
-    expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
+    await BoosterNFT.connect(user3).mintWithEth({value:BigInt(10**18)});
+    id = await BoosterNFT.tokenOfOwnerByIndex(user3.address, 0);
+    rarity = await BoosterNFT.getRarity(id)
+    console.log(rarity)
+    expect(await BoosterNFT.getBestRarity(user3.address)).to.equal(rarity);
+    var stakeAmount = BigInt(10**5);
+    await chefV2.connect(user3).deposit(2,0, 0,{value:stakeAmount});
+    await chefV2.connect(user4).deposit(2,0, 0,{value:stakeAmount});
+    amount3 = (await chefV2.userInfo(2,user3.address))[0];
+    amount4 = (await chefV2.userInfo(2,user4.address))[0];
+    // console.log((await chefV2.userInfo(2,user3.address))[0]);
     for(var i=0;i<5;i++){//generate 5 blocks
       await LibToken.approve(chefV2.address, BigInt(10**25));
     }
-    await chefV2.connect(user1).unstake(stakeAmount);
-    await chefV2.connect(user2).unstake(stakeAmount);
-    bal = await LibToken.balanceOf(user1.address);
-    bal2 = await LibToken.balanceOf(user2.address);
+    await chefV2.connect(user3).withdraw(2,amount3);
+    await chefV2.connect(user4).withdraw(2,amount4);
+
+    // await chefV2.connect(user3).claimReward(2);
+    // await chefV2.connect(user4).claimReward(2);
+    bal = await LibToken.balanceOf(user3.address);
+    bal2 = await LibToken.balanceOf(user4.address);
     console.log(bal);
     console.log(bal2);
-    
-    // expect(parseInt((await chefV2.userInfo(0,user1.address))[0])).to.above(parseInt(stakeAmount));
 
   });
 });
