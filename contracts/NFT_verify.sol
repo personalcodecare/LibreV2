@@ -1275,8 +1275,10 @@ contract NFT is ERC721Enumerable{
     using Strings for uint256;
     IERC20 public Lib;
     uint8 public LibMintBonus = 2;
-    uint32 private LIBRE_HOLDER_RESERVED = 20;
-    uint32 constant public MAXIMUM_SUPPLY = 250;
+    uint32 private LIBRE_HOLDER_RESERVED = 200;
+    uint32 constant public MAXIMUM_SUPPLY = 2500;
+    mapping(address=>uint32)public _mintEthAllowance;
+    mapping(address=>uint32)private _mintLibAllowance;
     uint256[] public unmintedTokens; // index 0~2499, value 1~2500
     // Pinata gateway URL linke to token Metadata json ex.https://gateway.pinata.cloud/ipfs/
     string private _baseURI;
@@ -1306,6 +1308,9 @@ contract NFT is ERC721Enumerable{
     function cid()public view returns(string memory){
         return _cid;
     }
+    function unMintedCount()public view returns(uint256){
+        return unmintedTokens.length;
+    }
     function initRarity(uint256 _start, uint256 _end, uint8[]memory _rarityTable)external onlyOwner{
         for(uint i=0;i<=_end - _start;i++){
             idToRarity[i+_start] = _rarityTable[i];
@@ -1333,12 +1338,16 @@ contract NFT is ERC721Enumerable{
 
     function mintWithEth()public payable{
         require(msg.value == ethprice, "Price not match");
+        require(_mintEthAllowance[msg.sender]<10, "You have reached maximum mint allowance with BNB");
         require(unmintedTokens.length > 0,"All NFT has mint");
+        _mintEthAllowance[msg.sender]++;
         _mintRandom();
     }
 
     function mintWithLib()public{
+        require(_mintLibAllowance[msg.sender]<5, "You have reached maximum mint allowance with Libre");
         require(Lib.transferFrom(msg.sender, address(this), libprice), "Insufficent Libre balance or allowance");
+        _mintLibAllowance[msg.sender]++;
         for(uint i=0;i<LibMintBonus;i++){
             if(unmintedTokens.length > 0) _mintRandom();
         }

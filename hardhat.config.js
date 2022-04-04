@@ -20,8 +20,8 @@ module.exports = {
   networks:{
     hardhat: {
       allowUnlimitedContractSize: true,
-      gas: 32_000_000,
-      blockGasLimit: 32_000_000,
+      gas: 72_000_000,
+      blockGasLimit: 72_000_000,
       gasPrice: 2000,
       initialBaseFeePerGas: 1
     } ,
@@ -29,7 +29,7 @@ module.exports = {
         url: `https://data-seed-prebsc-1-s1.binance.org:8545/`,
         chainId: 97,
         gase: "auto",
-        accounts: [`45f93e7a6cf774228519708aa97529a9ce2a663e26e67f183fe49bb9c90d468d`]
+        accounts: [``]
     } 
   },
   mocha:{

@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-
+const rarityArr = require("./rarityArr");
 const LIBRE = "0x4B303C3bFEA56A252D2573ec9A30dE8Efb9d00FD";
 const WBNB = "0x54d8b11d6a0437A48fEB1F92fb21418E269ac5fa";
 const CAKE = "0x72B81909583ca4C9ccc8374eDD3e770C5181bB16";
@@ -15,23 +15,25 @@ const BNBBUSD = {"address":"0x4AC0f6915090491C538467B77792933C5c996ebA","weight"
 async function main() {
   const [owner] = await hre.ethers.getSigners();
   LibToken = await ethers.getContractAt("LibToken",LIBRE);
-  chefV2 = await ethers.getContractAt("MasterChefV2","0x72B0921e55f88ee1620a887F1a0c01D019e8154F");
-  BoosterNFT = await ethers.getContractAt("NFT","0xd4c5BaF9578072Db0588d408A4Cf960C9565FE25");
+  chefV2 = await ethers.getContractAt("MasterChefV2","0x5b8b3FCFaB44697817c9CF6D3e31E122a9EFAFB9");
+  BoosterNFT = await ethers.getContractAt("NFT","0xB34B533ddA8DC11f86abE7219ce1641aaCEfF37e");
   // await LibToken.setChef(chefV2.address);
   // console.log('setChef done...');
   // await chefV2.add(LBREBNB.weight, LBREBNB.address, [WBNB, LIBRE], true, true);
   // await chefV2.add(LBREBUSD.weight, LBREBUSD.address, [BUSD, LIBRE], true, false);
   // await chefV2.add(BNBCAKE.weight, BNBCAKE.address, [WBNB, CAKE], true, true);
-  // await chefV2.add(BAKEBUSD.weight, BAKEBUSD.address, [BAKE, BUSD], true, false);
+  await chefV2.add(BAKEBUSD.weight, BAKEBUSD.address, [BAKE, BUSD], true, false);
   // await chefV2.add(BNBBUSD.weight, BNBBUSD.address, [WBNB, BUSD], true, true);
   // console.log('add Pool done...');
   // await chefV2.setBoosterNFT(BoosterNFT.address);
-  // for(var i=0;i<25;i++){
-  //   await BoosterNFT.initRarity(10*i + 1,10*i+10,[1,2,2,6,3,1,5,4,3,1]);
-  //   console.log(`id ${10*i + 1} to ${10*i+10} complete`);
-  // }
   // await BoosterNFT.setURI("https://ipfs.io/ipfs/");
   // await BoosterNFT.setCID("QmPhribQrECVnJaaK9z5nnMJB4AQHFrXLFUyhHpwyD9fUN/");
+  // for(var i=0;i<50;i++){
+  //   var tmp=[];
+  //   for(var j=0;j<50;j++)tmp.push(rarityArr[j+i*50]);
+  //   await BoosterNFT.initRarity(50*i + 1,50*i+50,tmp);
+  //   console.log(`id ${50*i + 1} to ${50*i+50} complete`);
+  // }
 }
 
 // We recommend this pattern to be able to use async/await everywhere

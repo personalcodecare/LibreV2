@@ -95,9 +95,10 @@ describe('Test Masterchef', function () {
 
     BoosterNFT = await this.NFT.deploy("Test","TEST", LibToken.address);
     await BoosterNFT.deployed();
-    for(var i=0;i<25;i++){
-      await BoosterNFT.initRarity(10*i + 1,10*i+10,[1,2,2,6,3,1,5,4,3,1]);
+    for(var i=0;i<100;i++){
+      await BoosterNFT.initRarity(25*i + 1,25*i+25,[2,6,3,1,5,4,3,1,2,3,4,1,5,1,3,2,1,3,5,1,2,4,3,1,3]);
     }
+
     // await token.setURI("https://ipfs.io/ipfs/");
     // await token.setCID("QmPhribQrECVnJaaK9z5nnMJB4AQHFrXLFUyhHpwyD9fUN/");
 
@@ -244,7 +245,6 @@ describe('Test Masterchef', function () {
     await BoosterNFT.connect(user3).mintWithEth({value:BigInt(10**18)});
     id = await BoosterNFT.tokenOfOwnerByIndex(user3.address, 0);
     rarity = await BoosterNFT.getRarity(id)
-    console.log(rarity)
     expect(await BoosterNFT.getBestRarity(user3.address)).to.equal(rarity);
     var stakeAmount = BigInt(10**5);
     await chefV2.connect(user3).deposit(2,0, 0,{value:stakeAmount});
@@ -262,8 +262,22 @@ describe('Test Masterchef', function () {
     // await chefV2.connect(user4).claimReward(2);
     bal = await LibToken.balanceOf(user3.address);
     bal2 = await LibToken.balanceOf(user4.address);
-    console.log(bal);
-    console.log(bal2);
+
+    expect(parseInt(bal) > parseInt(bal2)).to.be.equal(true);
+    await chefV2.NFTBoostOn(false);
+    await chefV2.connect(user1).stake(stakeAmount);
+    await chefV2.connect(user2).stake(stakeAmount);
+    amount1 = (await chefV2.userInfo(0,user1.address))[0];
+    amount2 = (await chefV2.userInfo(0,user2.address))[0];
+    for(var i=0;i<5;i++){//generate 5 blocks
+      await LibToken.approve(chefV2.address, BigInt(10**25));
+    }
+    await BoosterNFT.connect(user1).mintWithEth({value:BigInt(10**18)});
+    await chefV2.connect(user1).unstake(stakeAmount);
+    await chefV2.connect(user2).unstake(stakeAmount);
+    bal = await LibToken.balanceOf(user1.address);
+    bal2 = await LibToken.balanceOf(user2.address);
+    expect(bal).to.equal(bal2);
 
   });
 });
