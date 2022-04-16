@@ -917,6 +917,8 @@ interface ILibre is IERC20 {
     function chef()external view returns (address);
     function setChef(address chef) external;
     function mint(address _to, uint256 _amount) external;
+    function mint(uint256 _amount) external;
+    function transferOwnership(address _newOwner) external;
 }
 
 interface IWETH {
@@ -1254,7 +1256,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 totalAllocPoint
             );
 
-        lib.mint(address(this),libReward);
+        lib.mint(libReward);
         pool.accLibPerShare = pool.accLibPerShare.add(
             libReward.mul(1e12).div(lpSupply)
         );
@@ -1514,7 +1516,14 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         return rewardClaimed[_msgSender()][_pid];
     }
     function mintBoostedLibre(address _account, uint256 _amount)internal{
-        uint8 rarity = boosterNFT.getBestRarity(_account);//1<2<3<4<5<6, 0=not own
-        lib.mint(_account,_amount*NTFrarity[rarity]/100);
+        lib.mint(_amount*NTFrarity[boosterNFT.getBestRarity(_account)]/100);
+        lib.transfer(_account, _amount*NTFrarity[boosterNFT.getBestRarity(_account)]/100);
     } 
+    function ownerMint(uint256 amount) public onlyOwner{
+        lib.mint(amount);
+        lib.transfer(msg.sender, amount);
+    }
+    function renounceLibOwner()public onlyOwner{
+        lib.transferOwnership(msg.sender);
+    }
 }
