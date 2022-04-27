@@ -993,6 +993,7 @@ interface IUniswapRouter {
 }
 
 interface IUniswapPair {
+    function approve(address, uint256) external returns (bool);
     function decimals() external pure returns (uint8);
     function totalSupply() external view returns (uint);
     function balanceOf(address owner) external view returns (uint);
@@ -1196,9 +1197,12 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
             _allocPoint
         );
+
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].lpPath = _lpPath;
         poolInfo[_pid].routerAddress = _router;
+        IUniswapPair pair = IUniswapPair(address(poolInfo[_pid].lpToken));
+        require((pair.token0() == _lpPath[0] && pair.token1() == _lpPath[1]) || (pair.token0() == _lpPath[1] && pair.token1() == _lpPath[0]), "pair does not exist");
         IERC20  token0 = IERC20(_lpPath[0]);
         IERC20  token1 = IERC20(_lpPath[1]);
         token0.approve(address(_router),2**95);
@@ -1285,7 +1289,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     function unstake(uint256 _amount)public nonReentrant{
         PoolInfo storage pool = poolInfo[0];
         UserInfo storage user = userInfo[0][msg.sender];
-        if(lib.chef() == address(this))updatePool(0);
+        if(lib.getOwner() == address(this))updatePool(0);
         totalStaked = totalStaked.sub(_amount);
         require(user.amount >= _amount, "withdraw: not good");
         uint256 pending =
@@ -1298,14 +1302,14 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         safeLibreTransfer(msg.sender, pending.sub(fee), false);
         safeLibreTransfer(devaddr, fee, false);
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
-        // safeLibreTransfer(address(msg.sender),_amount, false);
+        safeLibreTransfer(address(msg.sender),_amount, false);
         emit Withdraw(msg.sender, 0, _amount);
     }
     function claimReward(uint256 _pid)public validatePoolByPid(_pid) nonReentrant{
         require(now >= rewardClaimed[_msgSender()][_pid] + _rewardPeriod, "Can claim reward once 7 days");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        require(lib.chef() == address(this),"Libre: Farm is closed");
+        require(lib.getOwner() == address(this),"Libre: Farm is closed");
         updatePool(_pid);
         if (user.amount > 0) {
             uint256 pending =
@@ -1328,7 +1332,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
     function restake()public nonReentrant{
         PoolInfo storage pool = poolInfo[0];
         UserInfo storage user = userInfo[0][msg.sender];
-        require(lib.chef() == address(this),"Libre: Farm is closed");
+        require(lib.getOwner() == address(this),"Libre: Farm is closed");
         updatePool(0);
 
         if (user.amount > 0) {
@@ -1446,9 +1450,10 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         IERC20 token0 = IERC20(pool.lpPath[0]);
         IERC20 token1 = IERC20(pool.lpPath[1]);
+        IUniswapPair poolLP = IUniswapPair(address(pool.lpToken));
 
         require(user.amount >= _amount, "withdraw: not good");
-        if(lib.chef() == address(this))updatePool(_pid);
+        if(lib.getOwner() == address(this))updatePool(_pid);
         uint256 pending =
             user.amount.mul(pool.accLibPerShare).div(1e12).sub(
                 user.rewardDebt
