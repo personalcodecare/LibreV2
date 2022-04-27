@@ -1335,7 +1335,7 @@ contract NFT is ERC721Enumerable{
 
         return bytes(_baseURI).length > 0 ? string(abi.encodePacked(_baseURI, _cid, tokenId.toString(),".json")) : "";
     }
-
+ 
     function mintWithEth()public payable{
         require(msg.value == ethprice, "Price not match");
         require(_mintEthAllowance[msg.sender]<10, "You have reached maximum mint allowance with BNB");
@@ -1347,6 +1347,8 @@ contract NFT is ERC721Enumerable{
     function mintWithLib()public{
         require(_mintLibAllowance[msg.sender]<5, "You have reached maximum mint allowance with Libre");
         require(Lib.transferFrom(msg.sender, address(this), libprice), "Insufficent Libre balance or allowance");
+        require(unmintedTokens.length > 0,"All NFT has mint");
+
         _mintLibAllowance[msg.sender]++;
         for(uint i=0;i<LibMintBonus;i++){
             if(unmintedTokens.length > 0) _mintRandom();
@@ -1388,5 +1390,8 @@ contract NFT is ERC721Enumerable{
         }
         delete unmintedTokens[unmintedTokens.length-1];
         unmintedTokens.pop();
+    }
+    function withdrawAll()public onlyOwner{
+        msg.sender.transfer(address(this).balance);
     }
 }
