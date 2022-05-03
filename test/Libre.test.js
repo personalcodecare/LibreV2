@@ -90,9 +90,9 @@ describe('Test Masterchef', function () {
     LibTestPair = await LibFactory.getPair(LibToken.address, TestToken.address);
     LibETHPair = await LibFactory.getPair(LibToken.address, WETH.address);
     TestETHPair = await LibFactory.getPair(WETH.address, TestToken.address);
-    chefV2.add(30, LibTestPair, [TestToken.address, LibToken.address], true, false);
-    chefV2.add(30, LibETHPair, [WETH.address, LibToken.address], true, true);
-    chefV2.add(30, TestETHPair, [WETH.address, TestToken.address], true, true);
+    chefV2.add(30, LibTestPair, [TestToken.address, LibToken.address], LibRouter.address, true, false);
+    chefV2.add(30, LibETHPair, [WETH.address, LibToken.address], LibRouter.address, true, true);
+    chefV2.add(30, TestETHPair, [WETH.address, TestToken.address], LibRouter.address, true, true);
     LibToken.transfer(user1.address, BigInt(10**15));
     TestToken.transfer(user1.address, BigInt(10**15));
     LibToken.transfer(user2.address, BigInt(10**15));
@@ -255,16 +255,16 @@ describe('Test Masterchef', function () {
 //     await chefV2.connect(user1).claimReward(0);
 //     expect(parseInt(await chefV2.pendingLib(0,user1.address))).to.equal(0);
 //   });
-//   it('Change LibRouter test', async ()=>{
-//     await LibToken.approve(LibRouter.address, LibSupply);
-//     await TestToken.approve(LibRouter.address, TestSupply);
-//     await LibRouter.addLiquidity(LibToken.address, TestToken.address,LibSupply,TestSupply, 
-//       0,0, owner.address, Date.now());
-//     await chefV2.set(1, 30, [TestToken.address, LibToken.address], LibRouter.address,true);
-//     expect((await chefV2.poolInfo(1))[3]).to.equal(LibRouter.address);
-//     await chefV2.connect(user1).deposit(1,100000, 0);
-//     expect((await chefV2.userInfo(1,user1.address))[0]).to.above(0);
-//   });
+  it('Change LibRouter test', async ()=>{
+    await LibToken.approve(LibRouter.address, LibSupply);
+    await TestToken.approve(LibRouter.address, TestSupply);
+    await LibRouter.addLiquidity(LibToken.address, TestToken.address,LibSupply,TestSupply, 
+      0,0, owner.address, Date.now());
+    await chefV2.set(1, 30, [TestToken.address, LibToken.address], LibRouter.address,true);
+    expect((await chefV2.poolInfo(1))[3]).to.equal(LibRouter.address);
+    await chefV2.connect(user1).deposit(1,100000, 0);
+    expect((await chefV2.userInfo(1,user1.address))[0]).to.above(0);
+  });
 //   it('NFT boost test', async ()=>{
 //     await chefV2.setBoosterNFT(BoosterNFT.address);
 //     await chefV2.NFTBoostOn(true);

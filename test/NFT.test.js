@@ -101,43 +101,49 @@ describe('Test NFT', function () {
   //   await expect(token.connect(user2).mintWithLib()).to.revertedWith("You have reached maximum mint allowance with Libre");
 
   // }); 
-  // it('Mint All test',async function(){
-  //   for(var i=0;i<50;i++){
-  //     time = Date.now();
-  //     await token.ownerReserve(50);
-  //     console.log(`Owner reserve ${i} ,left=${(await token.unMintedCount())}, processing time=${Date.now() - time}`);
-  //   } 
-  //   for(var i=1;i<=2500;i++){
-  //     expect(await token.ownerOf(i)).to.equal(owner.address);
-  //   }
-  //   // expect(await token.balanceOf(owner.address)).to.equal(50)
-  //   // let wallets = [];
-  //   // for (var i = 0; i < 100; i++) {
-  //   //     var temp = await ethers.Wallet.createRandom();
-  //   //     await owner.sendTransaction({
-  //   //         to: temp.address,
-  //   //         value: ethers.utils.parseEther("12")
-  //   //     });
-  //   //     await lib.transfer(temp.address, BigInt(10*10**18));
-  //   //     input = await lib.connect(temp).populateTransaction.approve(token.address, BigInt(10**25));
-  //   //     await submitRawTxn(input, temp, ethers, ethers.provider, 0);
+  it('Mint All test',async function(){
+    for(var i=0;i<9;i++){
+      time = Date.now();
+      await token.ownerReserve(250);
+      console.log(`Owner reserve ${i} ,left=${(await token.unMintedCount())}, processing time=${Date.now() - time}`);
+    } 
+    await lib.transfer(user2.address, BigInt(10*10**18));
+    await lib.connect(user2).approve(token.address, BigInt(10*10**18));
 
-  //   //     for(var j=0;j<5;j++){
-  //   //       input = await token.connect(temp).populateTransaction.mintWithEth();
-  //   //       await submitRawTxn(input, temp, ethers, ethers.provider, BigInt(1*10**18));
-  //   //       await submitRawTxn(input, temp, ethers, ethers.provider, BigInt(1*10**18));
-  //   //       input = await token.connect(temp).populateTransaction.mintWithLib();
-  //   //       await submitRawTxn(input, temp, ethers, ethers.provider, 0);
-  //   //     }
-  //   //     wallets[i] = temp;
-  //   //     console.log(`wallet ${i} done`)
-  //   // }
-  //   // for(var i=0;i<100;i++) expect(await token.balanceOf(wallets[i].address)).to.equal(20)
-  //   // for(var i=1;i<=2500;i++) expect(await token.ownerOf(i)).to.not.equal("0x0000000000000000000000000000000000000000");
-  //   // for(var i=0;i<10;i++)console.log(await token.getBestRarity(wallets[i].address));
-  //   // await expect(token.connect(user1).mintWithEth({value:BigInt(1*10**18)})).to.revertedWith("All NFT has mint");
+    await token.ownerReserve(249);
+    await token.connect(user2).mintWithLib();
+    console.log(await token.balanceOf(user2.address))
+    // for(var i=1;i<=2500;i++){
+    //   expect(await token.ownerOf(i)).to.equal(owner.address);
+    // }
+    // expect(await token.balanceOf(owner.address)).to.equal(50)
+    // let wallets = [];
+    // for (var i = 0; i < 100; i++) {
+    //     var temp = await ethers.Wallet.createRandom();
+    //     await owner.sendTransaction({
+    //         to: temp.address,
+    //         value: ethers.utils.parseEther("12")
+    //     });
+    //     await lib.transfer(temp.address, BigInt(10*10**18));
+    //     input = await lib.connect(temp).populateTransaction.approve(token.address, BigInt(10**25));
+    //     await submitRawTxn(input, temp, ethers, ethers.provider, 0);
 
-  // });
+    //     for(var j=0;j<5;j++){
+    //       input = await token.connect(temp).populateTransaction.mintWithEth();
+    //       await submitRawTxn(input, temp, ethers, ethers.provider, BigInt(1*10**18));
+    //       await submitRawTxn(input, temp, ethers, ethers.provider, BigInt(1*10**18));
+    //       input = await token.connect(temp).populateTransaction.mintWithLib();
+    //       await submitRawTxn(input, temp, ethers, ethers.provider, 0);
+    //     }
+    //     wallets[i] = temp;
+    //     console.log(`wallet ${i} done`)
+    // }
+    // for(var i=0;i<100;i++) expect(await token.balanceOf(wallets[i].address)).to.equal(20)
+    // for(var i=1;i<=2500;i++) expect(await token.ownerOf(i)).to.not.equal("0x0000000000000000000000000000000000000000");
+    // for(var i=0;i<10;i++)console.log(await token.getBestRarity(wallets[i].address));
+    // await expect(token.connect(user1).mintWithEth({value:BigInt(1*10**18)})).to.revertedWith("All NFT has mint");
+
+  });
 });
 
 
