@@ -1278,7 +1278,7 @@ contract NFT is ERC721Enumerable{
     uint32 private LIBRE_HOLDER_RESERVED = 200;
     uint32 constant public MAXIMUM_SUPPLY = 2500;
     mapping(address=>uint32)public _mintEthAllowance;
-    mapping(address=>uint32)private _mintLibAllowance;
+    mapping(address=>uint32)public _mintLibAllowance;
     uint256[] public unmintedTokens; // index 0~2499, value 1~2500
     // Pinata gateway URL linke to token Metadata json ex.https://gateway.pinata.cloud/ipfs/
     string private _baseURI;
@@ -1286,8 +1286,8 @@ contract NFT is ERC721Enumerable{
     string private _cid;
     mapping(uint256=>uint8)private idToRarity;
     mapping(address=>uint8)private bestRarityOwned;
-    uint256 public ethprice = 1*10**18;
-    uint256 public libprice = 1*10**18;
+    uint256 public ethprice;
+    uint256 public libprice;
     constructor (string memory _name, string memory _symbol, address _lib) 
     public ERC721(_name, _symbol){
         unmintedTokens = new uint256[](MAXIMUM_SUPPLY);
@@ -1324,11 +1324,14 @@ contract NFT is ERC721Enumerable{
     function setLibre(address _lib)external onlyOwner{
         Lib = IERC20(_lib);
     }
-    function setURI(string memory URI_)public onlyOwner{
+    function setURI(string memory URI_)external onlyOwner{
         _baseURI = URI_;
     }
-    function setCID(string memory cid_)public onlyOwner{
+    function setCID(string memory cid_)external onlyOwner{
         _cid = cid_;
+    }
+    function setLibMintBonus(uint8 value)external onlyOwner{
+        LibMintBonus = value;
     }
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
@@ -1384,13 +1387,11 @@ contract NFT is ERC721Enumerable{
     }
     function remove(uint index)public{
         if (index >= unmintedTokens.length) return;
+        unmintedTokens[index] = unmintedTokens[unmintedTokens.length-1];
 
-        for (uint i = index; i<unmintedTokens.length-1; i++){
-            unmintedTokens[i] = unmintedTokens[i+1];
-        }
         delete unmintedTokens[unmintedTokens.length-1];
         unmintedTokens.pop();
-    }
+    } 
     function withdrawAll()public onlyOwner{
         msg.sender.transfer(address(this).balance);
     }

@@ -1148,6 +1148,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         uint256 _allocPoint,
         IERC20 _lpToken,
         address[] memory _lpPath,
+        address _router,
         bool _withUpdate,
         bool _isETHPair
     ) external onlyOwner {
@@ -1176,18 +1177,16 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
                 allocPoint: _allocPoint,
                 lpPath:_lpPath,
                 lastRewardBlock: lastRewardBlock,
-                routerAddress: address(uniRouter),
+                routerAddress: _router,
                 accLibPerShare: 0,
                 isETHPair: _isETHPair
             })
         );
     }
-    
     // Update the given pool's allocation point. Can only be called by the owner.
     function set(
         uint256 _pid,
         uint256 _allocPoint,
-        address[] memory _lpPath,
         address _router,
         bool _withUpdate
     ) external onlyOwner validatePoolByPid(_pid){
@@ -1199,15 +1198,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         );
 
         poolInfo[_pid].allocPoint = _allocPoint;
-        poolInfo[_pid].lpPath = _lpPath;
         poolInfo[_pid].routerAddress = _router;
-        IUniswapPair pair = IUniswapPair(address(poolInfo[_pid].lpToken));
-        require((pair.token0() == _lpPath[0] && pair.token1() == _lpPath[1]) || (pair.token0() == _lpPath[1] && pair.token1() == _lpPath[0]), "pair does not exist");
-        IERC20  token0 = IERC20(_lpPath[0]);
-        IERC20  token1 = IERC20(_lpPath[1]);
-        token0.approve(address(_router),2**95);
-        token1.approve(address(_router),2**95);
-        poolInfo[_pid].lpToken.approve(address(_router),2**95);
     }
 
     // Return reward multiplier over the given _from to _to block.
