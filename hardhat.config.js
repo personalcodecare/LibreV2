@@ -24,13 +24,7 @@ module.exports = {
       blockGasLimit: 72_000_000,
       gasPrice: 2000,
       initialBaseFeePerGas: 1
-    } ,
-    // BSCTest:{
-    //     url: `https://data-seed-prebsc-1-s1.binance.org:8545/`,
-    //     chainId: 97,
-    //     gase: "auto",
-    //     accounts: [``]
-    // } 
+    }
   },
   mocha:{
     timeout: 900000000,
