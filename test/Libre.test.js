@@ -160,26 +160,28 @@ describe('Test Masterchef', function () {
 //     await chefV2.massUpdatePools();
 //     expect(parseInt(await chefV2.pendingLib(1,user1.address))).to.above(0);
 // });
-//   it('Deposit LP test', async ()=>{
-//     LPToken = await LibFactory.getPair(LibToken.address, TestToken.address);
-//     LP = new ethers.Contract(LPToken, TokenABI,ethers.provider);
-//     await LibToken.connect(user1).approve(LibRouter.address,BigInt(10**18));
-//     await TestToken.connect(user1).approve(LibRouter.address,BigInt(10**18));
-//     await LibRouter.connect(user1).addLiquidity(LibToken.address, TestToken.address, 100000000, 100000000, 0, 0, user1.address, Date.now());
-//     depositAmount = parseInt(await LP.balanceOf(user1.address))
-//     // await LP.connect(user1).approve(LibRouter.address,depositAmount)
-//     // await LibRouter.connect(user1).removeLiquidity(LibToken.address, TestToken.address, depositAmount, 0, 0, user1.address, Date.now());
-//     await LP.connect(user1).approve(chefV2.address, BigInt(10**18))
-//     await chefV2.connect(user1).depositLP(1,depositAmount);
-//     amount = parseInt((await chefV2.userInfo(1,user1.address))[0]);
-//     expect(amount).to.above(0);
-//     console.log(await )
-//     // await chefV2.connect(user1).withdraw(1,amount);
-//     // bal = await LibToken.balanceOf(user1.address);
-//     // bal2 = await TestToken.balanceOf(user1.address);
-//     // console.log("balance after withdraw: "+bal)
-//     // console.log("balance2 after withdraw: "+bal2)
-// });
+  it('Deposit LP test', async ()=>{
+    LPToken = await LibFactory.getPair(LibToken.address, TestToken.address);
+    LP = new ethers.Contract(LPToken, TokenABI,ethers.provider);
+    await LibToken.connect(user1).approve(LibRouter.address,BigInt(10**18));
+    await TestToken.connect(user1).approve(LibRouter.address,BigInt(10**18));
+    await LibRouter.connect(user1).addLiquidity(LibToken.address, TestToken.address, 100000000, 100000000, 0, 0, user1.address, Date.now());
+    depositAmount = parseInt(await LP.balanceOf(user1.address))
+    // await LP.connect(user1).approve(LibRouter.address,depositAmount)
+    // await LibRouter.connect(user1).removeLiquidity(LibToken.address, TestToken.address, depositAmount, 0, 0, user1.address, Date.now());
+    await LP.connect(user1).approve(chefV2.address, BigInt(10**18))
+    await chefV2.connect(user1).depositLP(1,depositAmount);
+    amount = parseInt((await chefV2.userInfo(1,user1.address))[0]);
+    console.log('amount: '+ amount)
+    expect(amount).to.above(0);
+
+    await chefV2.connect(user1).withdrawLP(1,amount);
+    console.log("LP: "+(await LP.balanceOf(user1.address)))
+    // bal = await LibToken.balanceOf(user1.address);
+    // bal2 = await TestToken.balanceOf(user1.address);
+    // console.log("balance after withdraw: "+bal)
+    // console.log("balance2 after withdraw: "+bal2)
+});
   it('Deposit ETH test', async ()=>{
     var depositAmount = 1000000;
     initBal = await LibToken.balanceOf(user1.address);
@@ -201,66 +203,66 @@ describe('Test Masterchef', function () {
     console.log("balance2 after withdraw: "+bal2)
 
   });
-//   it('ClaimReward test', async ()=>{
-//     var rewardPeriod = 5;
-//     expect(parseInt(await chefV2._rewardPeriod())).to.equal(86400*7);
-//     await chefV2.setRewardPeriod(rewardPeriod);
-//     expect(parseInt(await chefV2._rewardPeriod())).to.equal(rewardPeriod);
-//     var stakeAmount = BigInt(10**4);
-//     await chefV2.connect(user1).stake(stakeAmount);
-//     await chefV2.connect(user1).deposit(1,100000, 0);
+  it('ClaimReward test', async ()=>{
+    var rewardPeriod = 5;
+    expect(parseInt(await chefV2._rewardPeriod())).to.equal(86400*7);
+    await chefV2.setRewardPeriod(rewardPeriod);
+    expect(parseInt(await chefV2._rewardPeriod())).to.equal(rewardPeriod);
+    var stakeAmount = BigInt(10**4);
+    await chefV2.connect(user1).stake(stakeAmount);
+    await chefV2.connect(user1).deposit(1,100000, 0);
 
-//     expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
-//     for(var i=0;i<5;i++){//generate 5 blocks
-//       await LibToken.approve(chefV2.address, BigInt(10**25));
-//     }
-//     currBal = (parseInt(await LibToken.balanceOf(user1.address)));
-//     res = await chefV2.connect(user1).claimReward(1);
-//     receipt = await res.wait();
-//     var claimEvent = receipt.events.filter(function (one) {
-//       return one.event == "RewardClaim";
-//     })[0].args;
-//     expect(parseInt(claimEvent[1])).to.above(0);
-//     expect(parseInt(claimEvent[4])).to.equal(parseInt(claimEvent[3])+rewardPeriod);
-//     expect(parseInt(await LibToken.balanceOf(user1.address))).to.above(currBal);
-//     await expect(chefV2.connect(user1).claimReward(1)).to.revertedWith("Can claim reward once 7 days");
+    expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
+    for(var i=0;i<5;i++){//generate 5 blocks
+      await LibToken.approve(chefV2.address, BigInt(10**25));
+    }
+    currBal = (parseInt(await LibToken.balanceOf(user1.address)));
+    res = await chefV2.connect(user1).claimReward(1);
+    receipt = await res.wait();
+    var claimEvent = receipt.events.filter(function (one) {
+      return one.event == "RewardClaim";
+    })[0].args;
+    expect(parseInt(claimEvent[1])).to.above(0);
+    expect(parseInt(claimEvent[4])).to.equal(parseInt(claimEvent[3])+rewardPeriod);
+    expect(parseInt(await LibToken.balanceOf(user1.address))).to.above(currBal);
+    await expect(chefV2.connect(user1).claimReward(1)).to.revertedWith("Can claim reward once 7 days");
 
-//     currBal = (parseInt(await LibToken.balanceOf(user1.address)));
-//     for(var i=1;i<=rewardPeriod;i++){ //Pass 5 sec
-//       await delay(1000);
-//       await LibToken.approve(chefV2.address, BigInt(10**25));
-//       console.log(`Wait ${i} sec...`);
-//     }
-//     await chefV2.connect(user1).claimReward(1)
-//     expect(parseInt(await LibToken.balanceOf(user1.address))).to.above(currBal);
+    currBal = (parseInt(await LibToken.balanceOf(user1.address)));
+    for(var i=1;i<=rewardPeriod;i++){ //Pass 5 sec
+      await delay(1000);
+      await LibToken.approve(chefV2.address, BigInt(10**25));
+      console.log(`Wait ${i} sec...`);
+    }
+    await chefV2.connect(user1).claimReward(1)
+    expect(parseInt(await LibToken.balanceOf(user1.address))).to.above(currBal);
 
-//   });
-//   it('Restake test', async ()=>{
-//     var stakeAmount = BigInt(10**4);
-//     await chefV2.connect(user1).stake(stakeAmount);
-//     expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
-//     for(var i=0;i<5;i++){//generate 5 blocks
-//       await LibToken.approve(chefV2.address, BigInt(10**25));
-//     }
-//     await chefV2.connect(user1).restake();
-//     expect(parseInt((await chefV2.userInfo(0,user1.address))[0])).to.above(parseInt(stakeAmount));
-//   });
-//   it('Fix emission test', async ()=>{
-//     libPerBlock=100;
-//     await chefV2.setLibrePerBlock(libPerBlock);
-//     expect(parseInt(await chefV2.libPerBlock())).to.equal(libPerBlock);
-//     await chefV2.connect(user1).stake(10000);
-//     await LibToken.approve(chefV2.address, BigInt(10**25));//generate 1 block
-//     expect(parseInt(await chefV2.pendingLib(0,user1.address))).to.equal(parseInt(libPerBlock)/10);
-//     await chefV2.connect(user1).claimReward(0);
-//     expect(parseInt(await chefV2.pendingLib(0,user1.address))).to.equal(0);
-//   });
+  });
+  it('Restake test', async ()=>{
+    var stakeAmount = BigInt(10**4);
+    await chefV2.connect(user1).stake(stakeAmount);
+    expect(BigInt((await chefV2.userInfo(0,user1.address))[0])).to.eq(stakeAmount);
+    for(var i=0;i<5;i++){//generate 5 blocks
+      await LibToken.approve(chefV2.address, BigInt(10**25));
+    }
+    await chefV2.connect(user1).restake();
+    expect(parseInt((await chefV2.userInfo(0,user1.address))[0])).to.above(parseInt(stakeAmount));
+  });
+  it('Fix emission test', async ()=>{
+    libPerBlock=100;
+    await chefV2.setLibrePerBlock(libPerBlock);
+    expect(parseInt(await chefV2.libPerBlock())).to.equal(libPerBlock);
+    await chefV2.connect(user1).stake(10000);
+    await LibToken.approve(chefV2.address, BigInt(10**25));//generate 1 block
+    expect(parseInt(await chefV2.pendingLib(0,user1.address))).to.equal(parseInt(libPerBlock)/10);
+    await chefV2.connect(user1).claimReward(0);
+    expect(parseInt(await chefV2.pendingLib(0,user1.address))).to.equal(0);
+  });
   it('Change LibRouter test', async ()=>{
     await LibToken.approve(LibRouter.address, LibSupply);
     await TestToken.approve(LibRouter.address, TestSupply);
     await LibRouter.addLiquidity(LibToken.address, TestToken.address,LibSupply,TestSupply, 
       0,0, owner.address, Date.now());
-    await chefV2.set(1, 30, [TestToken.address, LibToken.address], LibRouter.address,true);
+    await chefV2.set(1, 30, LibRouter.address,true);
     expect((await chefV2.poolInfo(1))[3]).to.equal(LibRouter.address);
     await chefV2.connect(user1).deposit(1,100000, 0);
     expect((await chefV2.userInfo(1,user1.address))[0]).to.above(0);

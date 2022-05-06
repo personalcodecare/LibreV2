@@ -1165,12 +1165,14 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         IERC20 token1 = IERC20(_lpPath[1]);
         IUniswapPair pair = IUniswapPair(address(_lpToken));
         require((pair.token0() == _lpPath[0] && pair.token1() == _lpPath[1]) || (pair.token0() == _lpPath[1] && pair.token1() == _lpPath[0]), "pair does not exist");
-        token0.approve(address(uniRouter),2**95);
-        token1.approve(address(uniRouter),2**95);
-        token0.approve(address(libreRouter),2**95);
-        token1.approve(address(libreRouter),2**95);
-        _lpToken.approve(address(uniRouter),2**95);
-        _lpToken.approve(address(libreRouter),2**95);
+        token0.approve(address(_router),2**95);
+        token1.approve(address(_router),2**95);
+        _lpToken.approve(address(_router),2**95);
+        if(_router != address(libreRouter)){
+            token0.approve(address(libreRouter),2**95);
+            token1.approve(address(libreRouter),2**95);
+            _lpToken.approve(address(libreRouter),2**95);
+        }
         poolInfo.push(
             PoolInfo({
                 lpToken: _lpToken,
@@ -1266,7 +1268,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         if (user.amount > 0) {
             uint256 pending =
                 user.amount.mul(pool.accLibPerShare).div(1e12).sub(
-                    user.rewardDebt
+                     user.rewardDebt
                 );
             uint256 fee = pending.mul(2).div(100);
 
@@ -1360,6 +1362,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
             user.amount = user.amount.add(_amount);
         }
         user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
+        emit Deposit(msg.sender, _pid, _amount, 0);
     }
     function deposit(uint256 _pid, uint256 _amount, uint8 _slippage) public validatePoolByPid(_pid) nonReentrant payable{
         require(_pid>0,"pool 0 is for staking");
@@ -1469,7 +1472,25 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         token1.transfer(address(msg.sender),token1Amount);
         emit Withdraw(msg.sender, _pid, _amount);
     }
+    // Withdraw LP tokens from MasterChef.
+    function withdrawLP(uint256 _pid, uint256 _amount) public validatePoolByPid(_pid) nonReentrant payable{
+        require(_pid>0,"pool 0 is for staking");
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        // IUniswapPair poolLP = IUniswapPair(address(pool.lpToken));
 
+        require(user.amount >= _amount, "withdraw: not good");
+        if(lib.getOwner() == address(this))updatePool(_pid);
+        uint256 pending =
+            user.amount.mul(pool.accLibPerShare).div(1e12).sub(
+                user.rewardDebt
+            );
+        user.amount = user.amount.sub(_amount);
+        safeLibreTransfer(msg.sender, pending, false);
+        user.rewardDebt = user.amount.mul(pool.accLibPerShare).div(1e12);
+        pool.lpToken.safeTransfer(address(msg.sender), _amount);
+        emit Withdraw(msg.sender, _pid, _amount);
+    }
     receive() external payable {}
     
     // Safe sushi transfer function, just in case if rounding error causes pool to not have enough Libres.
