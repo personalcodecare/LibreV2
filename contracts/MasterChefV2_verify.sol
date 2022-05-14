@@ -1217,7 +1217,7 @@ contract MasterChefV2 is Ownable,ReentrancyGuard {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accLibPerShare = pool.accLibPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = _pid == 0 ?totalStaked:pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 libReward =  multiplier.mul(libPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
